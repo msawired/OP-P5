@@ -1,29 +1,38 @@
 import { TEXT_FILE_REGEX } from '../../../../server/utils/fileUtils';
-import { apiClient } from '../../../utils/apiClient';
-import { getConfig } from '../../../utils/getConfig';
-import { isTestEnvironment } from '../../../utils/checkTestEnv';
+import { opApiClient } from '../../../utils/opApiClient';
 import { handleCreateFile } from './files';
 import { showErrorModal } from './ide';
 
-const s3BucketUrlBase = getConfig('S3_BUCKET_URL_BASE');
-const awsRegion = getConfig('AWS_REGION');
-const s3Bucket = getConfig('S3_BUCKET');
-
-if (!isTestEnvironment && !s3BucketUrlBase && !(awsRegion && s3Bucket)) {
-  throw new Error(`S3 bucket address not configured. 
-    Configure either S3_BUCKET_URL_BASE or both AWS_REGION & S3_BUCKET in env vars`);
-}
-
-export const s3BucketHttps =
-  s3BucketUrlBase || `https://s3-${awsRegion}.amazonaws.com/${s3Bucket}/`;
-
 const MAX_LOCAL_FILE_SIZE = 80000; // bytes, aka 80 KB
+const uploadPoliciesBySketchId = {};
 
 function isS3Upload(file) {
   return !TEXT_FILE_REGEX.test(file.name) || file.size >= MAX_LOCAL_FILE_SIZE;
 }
 
-export async function dropzoneAcceptCallback(userId, file, done, dispatch) {
+function buildUploadedFileUrl(fileBase, filename) {
+  const base = fileBase.endsWith('/') ? fileBase : `${fileBase}/`;
+  return encodeURI(`${base}${filename}`);
+}
+
+async function getUploadPolicy(projectId) {
+  if (!uploadPoliciesBySketchId[projectId]) {
+    uploadPoliciesBySketchId[projectId] = opApiClient
+      .get(`/sketch/${projectId}/fileUploadPolicy`)
+      .then((response) => response.data)
+      .catch((error) => {
+        delete uploadPoliciesBySketchId[projectId];
+        throw error;
+      });
+  }
+  return uploadPoliciesBySketchId[projectId];
+}
+
+export function getDropzoneUploadUrl(files) {
+  return files[0]?.postData?.bucket ?? '';
+}
+
+export async function dropzoneAcceptCallback(projectId, file, done, dispatch) {
   // if a user would want to edit this file as text, local interceptor
   if (!isS3Upload(file)) {
     try {
@@ -40,19 +49,15 @@ export async function dropzoneAcceptCallback(userId, file, done, dispatch) {
       console.warn(file);
     }
   } else {
+    if (!projectId) {
+      done('Please save this sketch before uploading asset files.');
+      return;
+    }
     try {
-      const response = await apiClient.post('/S3/sign', {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        userId
-        // _csrf: document.getElementById('__createPostToken').value
-      });
-      // eslint-disable-next-line no-param-reassign
-      file.postData = response.data;
+      file.postData = await getUploadPolicy(projectId);
       done();
     } catch (error) {
-      if (error?.response?.status === 403) {
+      if (error?.response?.status === 403 || error?.response?.status === 413) {
         if (dispatch) {
           dispatch(showErrorModal('uploadLimit'));
         }
@@ -71,17 +76,25 @@ export async function dropzoneAcceptCallback(userId, file, done, dispatch) {
 export function dropzoneSendingCallback(file, xhr, formData) {
   if (isS3Upload(file)) {
     Object.keys(file.postData).forEach((key) => {
-      formData.append(key, file.postData[key]);
+      if (key !== 'bucket' && file.postData[key] !== undefined) {
+        formData.append(key, file.postData[key]);
+      }
     });
+    formData.append('Content-Type', file.type || '');
   }
 }
 
 export function dropzoneCompleteCallback(file) {
-  return (dispatch) => {
+  return (dispatch, getState) => {
     if (isS3Upload(file) && file.postData && file.status !== 'error') {
+      const { fileBase } = getState().project;
+      if (!fileBase) {
+        console.warn('Missing OP fileBase; uploaded file URL was not added.');
+        return;
+      }
       const formParams = {
         name: file.name,
-        url: `${s3BucketHttps}${file.postData.key}`
+        url: buildUploadedFileUrl(fileBase, file.name)
       };
       dispatch(handleCreateFile(formParams, false));
     } else if (file.content !== undefined) {

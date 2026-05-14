@@ -115,7 +115,10 @@ function renameFile(state, action) {
     if (file.id !== action.id) {
       return file;
     }
-    return Object.assign({}, file, { name: action.name });
+    return Object.assign({}, file, {
+      name: action.name,
+      url: action.url || file.url
+    });
   });
 }
 

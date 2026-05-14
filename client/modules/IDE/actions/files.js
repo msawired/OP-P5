@@ -1,6 +1,6 @@
 import objectID from 'bson-objectid';
 import blobUtil from 'blob-util';
-import { apiClient } from '../../../utils/apiClient';
+import { opApiClient } from '../../../utils/opApiClient';
 import * as ActionTypes from '../../../constants';
 import {
   setUnsavedChanges,
@@ -8,7 +8,6 @@ import {
   closeNewFileModal,
   setSelectedFile
 } from './ide';
-import { setProjectSavedTime } from './project';
 import { createError } from './ide';
 
 export function appendToFilename(filename, string) {
@@ -54,21 +53,6 @@ export function createFile(file, parentId) {
 }
 
 export function submitFile(formProps, files, parentId, projectId) {
-  if (projectId) {
-    const postParams = {
-      name: createUniqueName(formProps.name, parentId, files),
-      url: formProps.url,
-      content: formProps.content || '',
-      parentId,
-      children: []
-    };
-    return apiClient
-      .post(`/projects/${projectId}/files`, postParams)
-      .then((response) => ({
-        file: response.data.updatedFile,
-        updatedAt: response.data.project.updatedAt
-      }));
-  }
   const id = objectID().toHexString();
   const file = {
     name: createUniqueName(formProps.name, parentId, files),
@@ -78,6 +62,9 @@ export function submitFile(formProps, files, parentId, projectId) {
     content: formProps.content || '',
     children: []
   };
+  if (projectId) {
+    file.projectId = projectId;
+  }
   return Promise.resolve({
     file
   });
@@ -92,9 +79,8 @@ export function handleCreateFile(formProps, setSelected = true) {
     return new Promise((resolve) => {
       submitFile(formProps, files, parentId, projectId)
         .then((response) => {
-          const { file, updatedAt } = response;
+          const { file } = response;
           dispatch(createFile(file, parentId));
-          if (updatedAt) dispatch(setProjectSavedTime(updatedAt));
           dispatch(closeNewFileModal());
           dispatch(setUnsavedChanges(true));
           if (setSelected) {
@@ -112,21 +98,6 @@ export function handleCreateFile(formProps, setSelected = true) {
 }
 
 export function submitFolder(formProps, files, parentId, projectId) {
-  if (projectId) {
-    const postParams = {
-      name: createUniqueName(formProps.name, parentId, files),
-      content: '',
-      children: [],
-      parentId,
-      fileType: 'folder'
-    };
-    return apiClient
-      .post(`/projects/${projectId}/files`, postParams)
-      .then((response) => ({
-        file: response.data.updatedFile,
-        updatedAt: response.data.project.updatedAt
-      }));
-  }
   const id = objectID().toHexString();
   const file = {
     type: ActionTypes.CREATE_FILE,
@@ -138,6 +109,9 @@ export function submitFolder(formProps, files, parentId, projectId) {
     fileType: 'folder',
     children: []
   };
+  if (projectId) {
+    file.projectId = projectId;
+  }
   return Promise.resolve({
     file
   });
@@ -152,9 +126,8 @@ export function handleCreateFolder(formProps) {
     return new Promise((resolve) => {
       submitFolder(formProps, files, parentId, projectId)
         .then((response) => {
-          const { file, updatedAt } = response;
+          const { file } = response;
           dispatch(createFile(file, parentId));
-          if (updatedAt) dispatch(setProjectSavedTime(updatedAt));
           dispatch(closeNewFolderModal());
           dispatch(setUnsavedChanges(true));
           resolve();
@@ -169,48 +142,69 @@ export function handleCreateFolder(formProps) {
 }
 
 export function updateFileName(id, name) {
-  return (dispatch) => {
-    dispatch(setUnsavedChanges(true));
+  return async (dispatch, getState) => {
+    const state = getState();
+    const file = state.files.find((candidate) => candidate.id === id);
+    let updatedName = name;
+    let updatedUrl;
+
+    if (state.project.id && file?.url) {
+      try {
+        const response = await opApiClient.patch(
+          `/sketch/${state.project.id}/files/${encodeURIComponent(file.name)}`,
+          { name }
+        );
+        updatedName = response.data.name || name;
+        updatedUrl = response.data.url;
+      } catch (error) {
+        const { response } = error;
+        dispatch({
+          type: ActionTypes.ERROR,
+          error: response?.data ?? { message: error.message }
+        });
+        return { error };
+      }
+    } else {
+      dispatch(setUnsavedChanges(true));
+    }
+
     dispatch({
       type: ActionTypes.UPDATE_FILE_NAME,
       id,
-      name
+      name: updatedName,
+      url: updatedUrl
     });
+    return { name: updatedName, url: updatedUrl };
   };
 }
 
 export function deleteFile(id, parentId) {
-  return (dispatch, getState) => {
+  return async (dispatch, getState) => {
     const state = getState();
-    if (state.project.id) {
-      const deleteConfig = {
-        params: {
-          parentId
-        }
-      };
-      apiClient
-        .delete(`/projects/${state.project.id}/files/${id}`, deleteConfig)
-        .then((response) => {
-          dispatch(setProjectSavedTime(response.data.project.updatedAt));
-          dispatch({
-            type: ActionTypes.DELETE_FILE,
-            id,
-            parentId
-          });
-        })
-        .catch((error) => {
-          const { response } = error;
-          dispatch({
-            type: ActionTypes.ERROR,
-            error: response.data
-          });
+    const file = state.files.find((candidate) => candidate.id === id);
+    if (state.project.id && file?.url) {
+      try {
+        await opApiClient.delete(
+          `/sketch/${state.project.id}/files/${encodeURIComponent(file.name)}`
+        );
+      } catch (error) {
+        const { response } = error;
+        dispatch({
+          type: ActionTypes.ERROR,
+          error: response?.data ?? { message: error.message }
         });
-    } else {
-      dispatch({
-        type: ActionTypes.DELETE_FILE,
-        id,
-        parentId
-      });
+        return;
+      }
+    }
+
+    dispatch({
+      type: ActionTypes.DELETE_FILE,
+      id,
+      parentId
+    });
+
+    if (!file?.url) {
+      dispatch(setUnsavedChanges(true));
     }
   };
 }

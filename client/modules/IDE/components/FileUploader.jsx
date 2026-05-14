@@ -9,7 +9,7 @@ import {
   dropzoneAcceptCallback,
   dropzoneCompleteCallback,
   dropzoneSendingCallback,
-  s3BucketHttps
+  getDropzoneUploadUrl
 } from '../actions/uploader';
 
 Dropzone.autoDiscover = false;
@@ -44,7 +44,7 @@ const StyledUploader = styled.div`
 function FileUploader() {
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const userId = useSelector((state) => state.user.id);
+  const projectId = useSelector((state) => state.project.id);
   const deleteUploadErrorFiles = (uploader, file) => {
     if (file.status === 'error') {
       file.previewElement.addEventListener('click', (e) => {
@@ -55,7 +55,7 @@ function FileUploader() {
   };
   useEffect(() => {
     const uploader = new Dropzone('div#uploader', {
-      url: s3BucketHttps,
+      url: getDropzoneUploadUrl,
       method: 'post',
       autoProcessQueue: true,
       clickable: true,
@@ -69,7 +69,7 @@ function FileUploader() {
       acceptedFiles: fileExtensionsAndMimeTypes,
       dictDefaultMessage: t('FileUploader.DictDefaultMessage'),
       accept: (file, done) => {
-        dropzoneAcceptCallback(userId, file, done, dispatch);
+        dropzoneAcceptCallback(projectId, file, done, dispatch);
       },
       sending: dropzoneSendingCallback
     });
@@ -80,7 +80,7 @@ function FileUploader() {
     return () => {
       uploader.destroy();
     };
-  }, [userId, t, dispatch]);
+  }, [projectId, t, dispatch]);
 
   return (
     <div>

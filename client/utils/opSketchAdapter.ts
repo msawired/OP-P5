@@ -4,6 +4,7 @@ export interface OpSketch {
   visualID: number | string;
   title: string;
   userID: number;
+  fileBase?: string;
   isPrivate?: number;
   mode?: string;
   description?: string;
@@ -18,6 +19,11 @@ export interface OpCodeTab {
   orderID?: number;
   createdOn: string;
   updatedOn: string;
+}
+
+export interface OpSketchFile {
+  name: string;
+  url: string;
 }
 
 export interface EditorFile {
@@ -53,7 +59,10 @@ export function visibilityToOpPrivacy(visibility: string): number {
 }
 
 // Convert OP code tabs to editor file nodes, including a root folder
-export function codeTabsToFiles(codeTabs: OpCodeTab[]): EditorFile[] {
+export function codeTabsToFiles(
+  codeTabs: OpCodeTab[],
+  sketchFiles: OpSketchFile[] = []
+): EditorFile[] {
   const rootId = objectID().toHexString();
   const sortedTabs = [...codeTabs].sort(
     (a, b) => Date.parse(a.updatedOn) - Date.parse(b.updatedOn)
@@ -74,30 +83,46 @@ export function codeTabsToFiles(codeTabs: OpCodeTab[]): EditorFile[] {
     };
   });
 
+  const assetNodes: EditorFile[] = sketchFiles.map((file) => {
+    const id = objectID().toHexString();
+    return {
+      id,
+      _id: id,
+      name: file.name,
+      content: '',
+      fileType: 'file',
+      children: [],
+      filePath: '',
+      url: file.url
+    };
+  });
+
   const root: EditorFile = {
     id: rootId,
     _id: rootId,
     name: 'root',
     content: '',
     fileType: 'folder',
-    children: fileNodes.map((f) => f.id)
+    children: [...fileNodes, ...assetNodes].map((f) => f.id)
   };
 
-  return [root, ...fileNodes];
+  return [root, ...fileNodes, ...assetNodes];
 }
 
 // Build a Redux-compatible project object from OP sketch metadata + code tabs
 export function opSketchToProject(
   sketch: OpSketch,
   codeTabs: OpCodeTab[],
-  username: string
+  username: string,
+  sketchFiles: OpSketchFile[] = []
 ) {
-  const files = codeTabsToFiles(codeTabs);
+  const files = codeTabsToFiles(codeTabs, sketchFiles);
   const savedCodeTitles = codeTabs.map((t) => t.title);
   return {
     id: opVisualIdToProjectId(sketch.visualID),
     name: sketch.title,
     visibility: opPrivacyToVisibility(sketch.isPrivate),
+    fileBase: sketch.fileBase,
     files,
     savedCodeTitles,
     updatedAt: sketch.updatedOn ?? '',
