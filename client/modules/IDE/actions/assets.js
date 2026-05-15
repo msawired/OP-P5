@@ -2,8 +2,24 @@ import { opApiClient } from '../../../utils/opApiClient';
 import * as ActionTypes from '../../../constants';
 import { startLoader, stopLoader } from '../reducers/loading';
 import { assetsActions } from '../reducers/assets';
+import { showToast } from './toast';
 
 const { setAssets, deleteAsset } = assetsActions;
+
+function encodeFilePath(filePath) {
+  return filePath.split('/').map(encodeURIComponent).join('/');
+}
+
+function getTransactionErrorMessage(error, fallbackMessage) {
+  const data = error?.response?.data;
+  return (
+    data?.message ||
+    data?.error ||
+    (typeof data === 'string' ? data : undefined) ||
+    error?.message ||
+    fallbackMessage
+  );
+}
 
 function normalizeOpAsset(asset) {
   const visualID = asset.visualID == null ? null : String(asset.visualID);
@@ -35,6 +51,12 @@ export function getAssets() {
       dispatch(setAssets(assetData));
       dispatch(stopLoader());
     } catch (error) {
+      dispatch(
+        showToast(
+          getTransactionErrorMessage(error, 'Failed to load assets.'),
+          5000
+        )
+      );
       dispatch({
         type: ActionTypes.ERROR
       });
@@ -53,10 +75,16 @@ export function deleteAssetRequest(assetKey) {
         throw new Error('Only sketch files can be deleted.');
       }
       await opApiClient.delete(
-        `/sketch/${asset.visualID}/files/${encodeURIComponent(asset.name)}`
+        `/sketch/${asset.visualID}/files/${encodeFilePath(asset.name)}`
       );
       dispatch(deleteAsset(assetKey));
     } catch (error) {
+      dispatch(
+        showToast(
+          getTransactionErrorMessage(error, 'Failed to delete asset.'),
+          5000
+        )
+      );
       dispatch({
         type: ActionTypes.ERROR
       });

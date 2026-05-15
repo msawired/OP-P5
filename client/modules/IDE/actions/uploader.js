@@ -1,18 +1,67 @@
 import { TEXT_FILE_REGEX } from '../../../../server/utils/fileUtils';
 import { opApiClient } from '../../../utils/opApiClient';
+import { getFilePath } from '../../../utils/opSketchAdapter';
 import { handleCreateFile } from './files';
 import { showErrorModal } from './ide';
+import { showToast } from './toast';
 
 const MAX_LOCAL_FILE_SIZE = 80000; // bytes, aka 80 KB
+const FILENAME_TEMPLATE = ['$', '{filename}'].join('');
 const uploadPoliciesBySketchId = {};
 
 function isS3Upload(file) {
   return !TEXT_FILE_REGEX.test(file.name) || file.size >= MAX_LOCAL_FILE_SIZE;
 }
 
-function buildUploadedFileUrl(fileBase, filename) {
+function getTransactionErrorMessage(error, fallbackMessage) {
+  const data = error?.response?.data;
+  return (
+    data?.message ||
+    data?.error ||
+    data?.responseText?.message ||
+    (typeof data === 'string' ? data : undefined) ||
+    error?.message ||
+    fallbackMessage
+  );
+}
+
+function showUploadError(dispatch, file, message) {
+  dispatch(showToast(message, 5000));
+  if (!file.previewElement) {
+    return;
+  }
+  file.previewElement.classList.add('dz-error');
+  file.previewElement.classList.remove('dz-success');
+  const dzErrorMessageElement = file.previewElement.querySelector(
+    '[data-dz-errormessage]'
+  );
+  if (dzErrorMessageElement) {
+    dzErrorMessageElement.textContent = message;
+  }
+}
+
+function buildUploadedFileUrl(fileBase, uploadPath, filename) {
   const base = fileBase.endsWith('/') ? fileBase : `${fileBase}/`;
-  return encodeURI(`${base}${filename}`);
+  const path = uploadPath ? `${uploadPath}/${filename}` : filename;
+  return encodeURI(`${base}${path}`);
+}
+
+function buildS3Key(keyTemplate, uploadPath) {
+  if (!uploadPath) {
+    return keyTemplate;
+  }
+  return keyTemplate.replace(
+    FILENAME_TEMPLATE,
+    `${uploadPath}/${FILENAME_TEMPLATE}`
+  );
+}
+
+function getUploadPath(files, parentId) {
+  const parent = files.find((file) => file.id === parentId);
+  if (!parent || parent.name === 'root') {
+    return '';
+  }
+  return getFilePath(parent);
 }
 
 async function getUploadPolicy(projectId) {
@@ -32,7 +81,13 @@ export function getDropzoneUploadUrl(files) {
   return files[0]?.postData?.bucket ?? '';
 }
 
-export async function dropzoneAcceptCallback(projectId, file, done, dispatch) {
+export async function dropzoneAcceptCallback(
+  projectId,
+  uploadPath,
+  file,
+  done,
+  dispatch
+) {
   // if a user would want to edit this file as text, local interceptor
   if (!isS3Upload(file)) {
     try {
@@ -55,20 +110,25 @@ export async function dropzoneAcceptCallback(projectId, file, done, dispatch) {
     }
     try {
       file.postData = await getUploadPolicy(projectId);
+      file.uploadPath = uploadPath;
       done();
     } catch (error) {
       if (error?.response?.status === 403 || error?.response?.status === 413) {
         if (dispatch) {
           dispatch(showErrorModal('uploadLimit'));
+          dispatch(showToast('Upload limit reached.', 5000));
         }
         done('Upload limit reached.');
         return;
       }
-      done(
-        error?.response?.data?.responseText?.message ||
-          error?.message ||
-          'Error: Reached upload limit.'
+      const message = getTransactionErrorMessage(
+        error,
+        'Failed to prepare file upload.'
       );
+      if (dispatch) {
+        dispatch(showToast(message, 5000));
+      }
+      done(message);
     }
   }
 }
@@ -77,7 +137,12 @@ export function dropzoneSendingCallback(file, xhr, formData) {
   if (isS3Upload(file)) {
     Object.keys(file.postData).forEach((key) => {
       if (key !== 'bucket' && file.postData[key] !== undefined) {
-        formData.append(key, file.postData[key]);
+        formData.append(
+          key,
+          key === 'key'
+            ? buildS3Key(file.postData[key], file.uploadPath)
+            : file.postData[key]
+        );
       }
     });
     formData.append('Content-Type', file.type || '');
@@ -85,25 +150,54 @@ export function dropzoneSendingCallback(file, xhr, formData) {
 }
 
 export function dropzoneCompleteCallback(file) {
-  return (dispatch, getState) => {
+  return async (dispatch, getState) => {
     if (isS3Upload(file) && file.postData && file.status !== 'error') {
       const { fileBase } = getState().project;
       if (!fileBase) {
-        console.warn('Missing OP fileBase; uploaded file URL was not added.');
+        showUploadError(
+          dispatch,
+          file,
+          'Missing OP fileBase; uploaded file URL was not added.'
+        );
         return;
       }
       const formParams = {
         name: file.name,
-        url: buildUploadedFileUrl(fileBase, file.name)
+        url: buildUploadedFileUrl(fileBase, file.uploadPath, file.name)
       };
-      dispatch(handleCreateFile(formParams, false));
+      const result = await dispatch(
+        handleCreateFile(formParams, false, {
+          overwrite: true,
+          preserveName: true
+        })
+      );
+      if (result?.error) {
+        showUploadError(
+          dispatch,
+          file,
+          getTransactionErrorMessage(
+            result.error,
+            'Failed to add uploaded file.'
+          )
+        );
+      }
     } else if (file.content !== undefined) {
       const formParams = {
         name: file.name,
         content: file.content
       };
-      dispatch(handleCreateFile(formParams, false));
-    } else if (file.status === 'error' || file.xhr.status >= 400) {
+      const result = await dispatch(handleCreateFile(formParams, false));
+      if (result?.error) {
+        showUploadError(
+          dispatch,
+          file,
+          getTransactionErrorMessage(
+            result.error,
+            'Failed to add uploaded file.'
+          )
+        );
+      }
+    } else if (file.status === 'error' || file.xhr?.status >= 400) {
       let uploadFileErrorMessage = 'Uploading file to AWS failed.';
       if (file.xhr?.response) {
         const parser = new DOMParser();
@@ -112,14 +206,11 @@ export function dropzoneCompleteCallback(file) {
         const code = xmlDoc.getElementsByTagName('Code')[0]?.textContent;
         uploadFileErrorMessage = `${code}: ${message}`;
       }
-      file.previewElement.classList.add('dz-error');
-      file.previewElement.classList.remove('dz-success');
-      const dzErrorMessageElement = file.previewElement?.querySelector(
-        '[data-dz-errormessage]'
-      );
-      if (dzErrorMessageElement) {
-        dzErrorMessageElement.textContent = uploadFileErrorMessage;
-      }
+      showUploadError(dispatch, file, uploadFileErrorMessage);
     }
   };
+}
+
+export function getUploadPathForParent(files, parentId) {
+  return getUploadPath(files, parentId);
 }

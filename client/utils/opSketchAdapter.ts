@@ -44,6 +44,18 @@ export interface CodeTabPayload {
   orderID: number;
 }
 
+function splitPath(name: string): { folders: string[]; basename: string } {
+  const parts = name.split('/').filter(Boolean);
+  const basename = parts.pop() ?? name;
+  return { folders: parts, basename };
+}
+
+export function getFilePath(
+  file: Pick<EditorFile, 'filePath' | 'name'>
+): string {
+  return file.filePath ? `${file.filePath}/${file.name}` : file.name;
+}
+
 export function opVisualIdToProjectId(visualID: number | string): string {
   return String(visualID);
 }
@@ -58,12 +70,66 @@ export function visibilityToOpPrivacy(visibility: string): number {
   return visibility === 'Public' ? 0 : 1;
 }
 
-// Convert OP code tabs to editor file nodes, including a root folder
+export function setupFolderHierarchy(files: EditorFile[]): EditorFile[] {
+  const rootId = objectID().toHexString();
+  const root: EditorFile = {
+    id: rootId,
+    _id: rootId,
+    name: 'root',
+    content: '',
+    fileType: 'folder',
+    children: []
+  };
+  const folderByPath = new Map<string, EditorFile>();
+  const structuredFiles: EditorFile[] = [root];
+
+  files.forEach((file) => {
+    const { folders, basename } = splitPath(file.name);
+    let parent = root;
+    let currentPath = '';
+
+    folders.forEach((folderName) => {
+      const folderPath = currentPath
+        ? `${currentPath}/${folderName}`
+        : folderName;
+      let folder = folderByPath.get(folderPath);
+
+      if (!folder) {
+        const id = objectID().toHexString();
+        folder = {
+          id,
+          _id: id,
+          name: folderName,
+          content: '',
+          fileType: 'folder',
+          filePath: currentPath,
+          children: []
+        };
+        folderByPath.set(folderPath, folder);
+        parent.children.push(id);
+        structuredFiles.push(folder);
+      }
+
+      parent = folder;
+      currentPath = folderPath;
+    });
+
+    parent.children.push(file.id);
+    structuredFiles.push({
+      ...file,
+      name: basename,
+      filePath: currentPath
+    });
+  });
+
+  return structuredFiles;
+}
+
+// Convert OP code tabs to editor file nodes, including folders implied by paths.
 export function codeTabsToFiles(
   codeTabs: OpCodeTab[],
   sketchFiles: OpSketchFile[] = []
 ): EditorFile[] {
-  const rootId = objectID().toHexString();
   const sortedTabs = [...codeTabs].sort(
     (a, b) => Date.parse(a.updatedOn) - Date.parse(b.updatedOn)
   );
@@ -97,16 +163,7 @@ export function codeTabsToFiles(
     };
   });
 
-  const root: EditorFile = {
-    id: rootId,
-    _id: rootId,
-    name: 'root',
-    content: '',
-    fileType: 'folder',
-    children: [...fileNodes, ...assetNodes].map((f) => f.id)
-  };
-
-  return [root, ...fileNodes, ...assetNodes];
+  return setupFolderHierarchy([...fileNodes, ...assetNodes]);
 }
 
 // Build a Redux-compatible project object from OP sketch metadata + code tabs
@@ -133,19 +190,28 @@ export function opSketchToProject(
   };
 }
 
-// Collect text file nodes from editor files (skip folders and binary url files)
-// Returns flat array ordered by root's children list
+function collectCodeFiles(files: EditorFile[], parentId: string): EditorFile[] {
+  const parent = files.find((f) => f.id === parentId);
+  if (!parent) return [];
+
+  return parent.children.flatMap((id) => {
+    const file = files.find((f) => f.id === id);
+    if (!file) return [];
+    if (file.fileType === 'folder') {
+      return collectCodeFiles(files, file.id);
+    }
+    return file.url ? [] : [file];
+  });
+}
+
+// Collect text file nodes from editor files (skip folders and binary url files).
 export function editorFilesToCodeTabs(files: EditorFile[]): CodeTabPayload[] {
   const root = files.find((f) => f.name === 'root' && f.fileType === 'folder');
   if (!root) return [];
 
-  return root.children
-    .map((id) => files.find((f) => f.id === id))
-    .filter((f): f is EditorFile => !!f && f.fileType === 'file' && !f.url)
-    .map((f, index) => ({
-      // OP code tab titles are max 25 chars
-      title: f.name.length > 25 ? f.name.slice(0, 25) : f.name,
-      code: f.content,
-      orderID: index
-    }));
+  return collectCodeFiles(files, root.id).map((f, index) => ({
+    title: getFilePath(f),
+    code: f.content,
+    orderID: index
+  }));
 }
