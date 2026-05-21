@@ -37,10 +37,17 @@ function normalizeOpAsset(asset) {
 
 export function getAssets() {
   return async (dispatch, getState) => {
+    const { user } = getState();
+    const userID = user?.id;
+
+    // Wait until auth hydration (/whoami) provides the current user's ID.
+    if (!userID) {
+      return;
+    }
+
     dispatch(startLoader());
     try {
-      const { user } = getState();
-      const response = await opApiClient.get(`/user/${user.id}/files`);
+      const response = await opApiClient.get(`/user/${userID}/files`);
       const assets = response.data.map(normalizeOpAsset);
 
       const assetData = {
