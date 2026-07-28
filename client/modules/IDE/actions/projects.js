@@ -1,4 +1,5 @@
 import { opApiClient } from '../../../utils/opApiClient';
+import notFoundRedirect from '../../../utils/notFoundRedirect';
 import {
   opPrivacyToVisibility,
   opVisualIdToProjectId
@@ -82,10 +83,12 @@ function cancelProjectsRequest(dispatch) {
   request.resolve([]);
 }
 
-const fetchProjects = (username, options, successType) => (
-  dispatch,
-  getState
-) => {
+const fetchProjects = (
+  username,
+  options,
+  successType,
+  { redirectIfUserMissing = false } = {}
+) => (dispatch, getState) => {
   const { user } = getState();
 
   // Sketches come from /user/{owner}/sketches. Another user's dashboard is
@@ -158,10 +161,13 @@ const fetchProjects = (username, options, successType) => (
             return;
           }
 
-          // A 404 here means the username in the URL has no OP user; the
-          // dashboard reports that with a toast, so don't also raise an
-          // error (and don't reject — no caller handles it).
+          // A 404 here means the username in the URL has no OP user. On the
+          // dashboard that makes the page itself a 404; elsewhere just report
+          // an empty list. Either way don't reject — no caller handles it.
           if (error?.response?.status === 404) {
+            if (redirectIfUserMissing) {
+              dispatch(notFoundRedirect('Toast.UserNotFound'));
+            }
             resolve([]);
             return;
           }
@@ -177,7 +183,9 @@ const fetchProjects = (username, options, successType) => (
 };
 
 export const getProjects = (username, options) =>
-  fetchProjects(username, options, ActionTypes.SET_PROJECTS);
+  fetchProjects(username, options, ActionTypes.SET_PROJECTS, {
+    redirectIfUserMissing: true
+  });
 
 export const getProjectsForCollectionList = (username, options) =>
   fetchProjects(

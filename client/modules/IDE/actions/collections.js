@@ -35,7 +35,10 @@ function fetchCollectionWithItems(collectionId) {
   );
 }
 
-export function getCollections(username) {
+export function getCollections(
+  username,
+  { redirectIfUserMissing = false } = {}
+) {
   return (dispatch, getState) => {
     dispatch(startLoader());
     const owner = username || getState().user.username;
@@ -56,9 +59,12 @@ export function getCollections(username) {
       .catch((error) => {
         dispatch(stopLoader());
 
-        // 404 means the username in the URL has no OP user — the dashboard
-        // reports that with a toast rather than an error.
+        // 404 means the username in the URL has no OP user. On the dashboard
+        // that makes the page itself a 404; elsewhere an empty list will do.
         if (error?.response?.status === 404) {
+          if (redirectIfUserMissing) {
+            dispatch(notFoundRedirect('Toast.UserNotFound'));
+          }
           return;
         }
 

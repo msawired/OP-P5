@@ -163,6 +163,7 @@
     "UserNotFound": "User not found",
     "SketchNotFound": "Sketch not found",
     "CollectionNotFound": "Collection not found",
+    "PageNotFound": "Page not found",
     "NetworkError": "Network error",
     "CloseAlertARIA": "Close Alert"
   },
