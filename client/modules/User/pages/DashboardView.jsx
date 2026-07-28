@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocation, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +23,9 @@ import {
   TabKey
 } from '../components/DashboardTabSwitcher';
 import useIsMobile from '../../IDE/hooks/useIsMobile';
+import useUserExists from '../hooks/useUserExists';
+import Toast from '../../IDE/components/Toast';
+import { showToast } from '../../IDE/actions/toast';
 
 const DashboardView = () => {
   const isMobile = useIsMobile();
@@ -34,6 +37,13 @@ const DashboardView = () => {
   const dispatch = useDispatch();
 
   const user = useSelector((state) => state.user);
+  const userExists = useUserExists(params.username);
+
+  useEffect(() => {
+    if (userExists === false) {
+      dispatch(showToast('Toast.UserNotFound'));
+    }
+  }, [userExists, dispatch]);
 
   const [collectionCreateVisible, setCollectionCreateVisible] = useState(false);
 
@@ -119,6 +129,7 @@ const DashboardView = () => {
   return (
     <RootPage fixedHeight="100%">
       <Nav layout="dashboard" />
+      <Toast />
 
       <main className="dashboard-header">
         <div className="dashboard-header__header">

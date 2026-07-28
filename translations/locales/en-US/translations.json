@@ -161,6 +161,8 @@
     "IncorrectCurrentPass": "Current password is incorrect",
     "DefaultError": "Something went wrong",
     "UserNotFound": "User not found",
+    "SketchNotFound": "Sketch not found",
+    "CollectionNotFound": "Collection not found",
     "NetworkError": "Network error",
     "CloseAlertARIA": "Close Alert"
   },

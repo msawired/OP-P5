@@ -63,11 +63,24 @@ export function getCollections(username) {
 }
 
 // Load a single collection (with its sketches) and upsert it into the store.
-export function getCollection(collectionId) {
+// A missing collection — or one owned by someone other than the username in
+// the URL — surfaces as a toast rather than an error modal.
+export function getCollection(collectionId, ownerUsername) {
   return (dispatch) => {
     dispatch(startLoader());
     return fetchCollectionWithItems(collectionId)
       .then((collection) => {
+        if (
+          ownerUsername &&
+          collection.owner.username &&
+          collection.owner.username.toLowerCase() !==
+            ownerUsername.toLowerCase()
+        ) {
+          dispatch(stopLoader());
+          dispatch(showToast('Toast.CollectionNotFound'));
+          return null;
+        }
+
         dispatch({
           type: ActionTypes.SET_COLLECTION,
           collection
@@ -76,11 +89,18 @@ export function getCollection(collectionId) {
         return collection;
       })
       .catch((error) => {
+        dispatch(stopLoader());
+
+        if (error?.response?.status === 404) {
+          dispatch(showToast('Toast.CollectionNotFound'));
+          return null;
+        }
+
         dispatch({
           type: ActionTypes.ERROR,
           error: getErrorPayload(error)
         });
-        dispatch(stopLoader());
+        return null;
       });
   };
 }

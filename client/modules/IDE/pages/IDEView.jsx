@@ -16,6 +16,7 @@ import {
   getProject
 } from '../actions/project';
 import { setUnsavedChanges } from '../actions/ide';
+import { showToast } from '../actions/toast';
 import {
   getLocalBackup,
   clearLocalBackup,
@@ -138,7 +139,11 @@ const IDEView = () => {
   useEffect(() => {
     const { project_id: id, username } = params;
     if (id && project.id !== id) {
-      dispatch(getProject(id, username));
+      dispatch(getProject(id, username)).then((result) => {
+        if (result?.notFound) {
+          dispatch(showToast('Toast.SketchNotFound'));
+        }
+      });
     }
   }, [dispatch, params, project.id]);
 
