@@ -9,6 +9,7 @@ import {
 import * as ActionTypes from '../../../constants';
 import { startLoader, stopLoader } from '../reducers/loading';
 import { setToastText, showToast } from './toast';
+import notFoundRedirect from '../../../utils/notFoundRedirect';
 
 const TOAST_DISPLAY_TIME_MS = 1500;
 const MAX_PAGE_SIZE = 1000;
@@ -53,11 +54,18 @@ export function getCollections(username) {
         dispatch(stopLoader());
       })
       .catch((error) => {
+        dispatch(stopLoader());
+
+        // 404 means the username in the URL has no OP user — the dashboard
+        // reports that with a toast rather than an error.
+        if (error?.response?.status === 404) {
+          return;
+        }
+
         dispatch({
           type: ActionTypes.ERROR,
           error: getErrorPayload(error)
         });
-        dispatch(stopLoader());
       });
   };
 }
@@ -77,7 +85,7 @@ export function getCollection(collectionId, ownerUsername) {
             ownerUsername.toLowerCase()
         ) {
           dispatch(stopLoader());
-          dispatch(showToast('Toast.CollectionNotFound'));
+          dispatch(notFoundRedirect('Toast.CollectionNotFound'));
           return null;
         }
 
@@ -92,7 +100,7 @@ export function getCollection(collectionId, ownerUsername) {
         dispatch(stopLoader());
 
         if (error?.response?.status === 404) {
-          dispatch(showToast('Toast.CollectionNotFound'));
+          dispatch(notFoundRedirect('Toast.CollectionNotFound'));
           return null;
         }
 

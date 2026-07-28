@@ -158,6 +158,14 @@ const fetchProjects = (username, options, successType) => (
             return;
           }
 
+          // A 404 here means the username in the URL has no OP user; the
+          // dashboard reports that with a toast, so don't also raise an
+          // error (and don't reject — no caller handles it).
+          if (error?.response?.status === 404) {
+            resolve([]);
+            return;
+          }
+
           dispatch({
             type: ActionTypes.ERROR,
             error: getRequestErrorPayload(error)

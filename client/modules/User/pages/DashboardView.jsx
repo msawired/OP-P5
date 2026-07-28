@@ -24,8 +24,7 @@ import {
 } from '../components/DashboardTabSwitcher';
 import useIsMobile from '../../IDE/hooks/useIsMobile';
 import useUserExists from '../hooks/useUserExists';
-import Toast from '../../IDE/components/Toast';
-import { showToast } from '../../IDE/actions/toast';
+import notFoundRedirect from '../../../utils/notFoundRedirect';
 
 const DashboardView = () => {
   const isMobile = useIsMobile();
@@ -41,7 +40,7 @@ const DashboardView = () => {
 
   useEffect(() => {
     if (userExists === false) {
-      dispatch(showToast('Toast.UserNotFound'));
+      dispatch(notFoundRedirect('Toast.UserNotFound'));
     }
   }, [userExists, dispatch]);
 
@@ -129,7 +128,6 @@ const DashboardView = () => {
   return (
     <RootPage fixedHeight="100%">
       <Nav layout="dashboard" />
-      <Toast />
 
       <main className="dashboard-header">
         <div className="dashboard-header__header">

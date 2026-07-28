@@ -1,7 +1,6 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import Nav from '../../IDE/components/Header/Nav';
-import Toast from '../../IDE/components/Toast';
 import { RootPage } from '../../../components/RootPage';
 import Collection from '../components/Collection';
 
@@ -12,7 +11,6 @@ export const CollectionView = () => {
   return (
     <RootPage>
       <Nav layout="dashboard" />
-      <Toast />
       <Collection
         collectionId={params.collection_id}
         username={params.username}

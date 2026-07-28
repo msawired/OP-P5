@@ -16,7 +16,7 @@ import {
   getProject
 } from '../actions/project';
 import { setUnsavedChanges } from '../actions/ide';
-import { showToast } from '../actions/toast';
+import notFoundRedirect from '../../../utils/notFoundRedirect';
 import {
   getLocalBackup,
   clearLocalBackup,
@@ -141,7 +141,7 @@ const IDEView = () => {
     if (id && project.id !== id) {
       dispatch(getProject(id, username)).then((result) => {
         if (result?.notFound) {
-          dispatch(showToast('Toast.SketchNotFound'));
+          dispatch(notFoundRedirect('Toast.SketchNotFound'));
         }
       });
     }
