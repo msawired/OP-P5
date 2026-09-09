@@ -35,9 +35,30 @@ Settings → Source → Branch → **`OP-backend-refactor`**.
 
 ### 3. Build configuration
 
-Nothing to do — [`railway.json`](../railway.json) pins the Dockerfile builder,
-and Railway builds the final `production` stage. Health checks hit `/health` on
-the editor server.
+Set these by hand in the dashboard. Railway's Config-as-code (`railway.json`)
+is deprecated and, as of 2026-08-28, services that have never used it can no
+longer opt in — so a committed config file is silently ignored.
+
+| Setting | Value |
+| ------- | ----- |
+| Build → Builder | `Dockerfile` |
+| Build → Dockerfile Path | leave blank (defaults to `./Dockerfile`) |
+| Deploy → Healthcheck Path | `/health` |
+
+Railway builds the final stage of the Dockerfile, which is `production`. If the
+Builder is left on Railpack, Railway ignores the Dockerfile and auto-detects
+instead — which resolves to `npm start`, the **development** command. It runs
+nodemon and webpack-dev-middleware, and is not what you want in production.
+
+The `production` stage sets `NODE_ENV=production` itself, and its `CMD` runs
+`npm run start:prod`, so no custom start command is needed.
+
+### Serverless
+
+Deploy → Serverless scales the container to zero when idle and queues requests
+until it wakes. That trades a cold start on the first request for lower cost.
+For a user-facing editor the stall is noticeable; turn it off if the deployment
+needs to feel instant, and leave it on to conserve free-plan usage.
 
 ### 4. Variables
 
