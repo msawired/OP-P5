@@ -51,7 +51,16 @@ const userSchema = new Schema<UserDocument, UserModel>(
     // Incremented whenever credentials change (email, password, linked
     // accounts) so that sessions serialized with an older version are
     // rejected on deserialization, logging out every other session.
-    sessionVersion: { type: Number, default: 0 }
+    sessionVersion: { type: Number, default: 0 },
+    // Set by OpenProcessing through the signed /migration/status endpoint.
+    // `migrating` freezes writes while OP imports the account; `migrated`
+    // means the account now lives on the new editor.
+    migration: {
+      state: { type: String, enum: ['migrating', 'migrated'] },
+      opUserID: { type: Number },
+      opUsername: { type: String },
+      updatedAt: { type: Date }
+    }
   },
   { timestamps: true }
 );

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import passport from 'passport';
 import * as ProjectController from '../controllers/project.controller';
+import { rejectIfMigrated } from '../middleware/rejectIfMigrated';
 
 const router = Router();
 
@@ -13,6 +14,7 @@ router.get(
 router.post(
   '/:username/sketches',
   passport.authenticate('basic', { session: false }),
+  rejectIfMigrated,
   ProjectController.apiCreateProject
 );
 
@@ -21,6 +23,7 @@ router.post(
 router.delete(
   '/:username/sketches/:project_id',
   passport.authenticate('basic', { session: false }),
+  rejectIfMigrated,
   ProjectController.deleteProject
 );
 

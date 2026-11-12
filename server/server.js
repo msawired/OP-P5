@@ -26,7 +26,9 @@ import aws from './routes/aws.routes';
 import serverRoutes from './routes/server.routes';
 import redirectEmbedRoutes from './routes/redirectEmbed.routes';
 import passportRoutes from './routes/passport.routes';
+import migration from './routes/migration.routes';
 import { requestsOfTypeJSON } from './utils/requestsOfType';
+import { rejectIfMigrated } from './middleware/rejectIfMigrated';
 
 import { renderIndex } from './views/index';
 import { get404Sketch } from './views/404Page';
@@ -123,6 +125,12 @@ if (process.env.BASIC_USERNAME && process.env.BASIC_PASSWORD) {
   );
 }
 
+// Signed server-to-server endpoints for the OpenProcessing migration. Mounted
+// after basic auth, so where it's enabled (staging) OP must send those
+// credentials too (P5_MIGRATION_BASIC_USER/PASS on OP); the HMAC signature is
+// always required on top.
+app.use('/migration', migration);
+
 // Body parser, cookie parser, sessions, serve public assets
 app.use(
   '/locales',
@@ -144,6 +152,8 @@ app.use(Express.static(path.resolve(__dirname, '../public')));
 
 app.use(passport.initialize());
 app.use(passport.session());
+// Accounts migrated (or migrating) to OpenProcessing are read-only here.
+app.use('/editor', rejectIfMigrated);
 app.use('/editor', requestsOfTypeJSON(), users);
 app.use('/editor', requestsOfTypeJSON(), sessions);
 app.use('/editor', requestsOfTypeJSON(), files);

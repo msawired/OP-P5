@@ -315,6 +315,11 @@
     "p5logoARIA": "p5.js Logo",
     "DeleteConfirmation": "Are you sure you want to delete {{name}}?"
   },
+  "AccountMigration": {
+    "Title": "Account migrated",
+    "Migrated": "Your user account is now migrated. Please use the new editor on <link>{{url}}</link>",
+    "Migrating": "Your user account is being migrated to the new editor, so changes can't be saved here. Once it's done, please use the new editor on <link>{{url}}</link>"
+  },
   "IDEView": {
     "SubmitFeedback": "Submit Feedback",
     "SubmitFeedbackARIA": "submit-feedback",

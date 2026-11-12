@@ -28,6 +28,13 @@ export interface IUser extends VirtualId, MongooseTimestamps {
   lastLoginTimestamp?: Date;
   /** Bumped on credential changes to invalidate sessions serialized with an older version */
   sessionVersion?: number;
+  /** Set by OpenProcessing during the p5 -> OP migration (see accountMigration.ts) */
+  migration?: {
+    state?: 'migrating' | 'migrated';
+    opUserID?: number;
+    opUsername?: string;
+    updatedAt?: Date;
+  };
 }
 
 /** User object which can be exposed to the client */

@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import { showReduxDevTools } from '../../store';
 import { DevTools } from './components/DevTools';
+import { AccountMigrationNotice } from './components/AccountMigrationNotice';
 import { setPreviousPath } from '../IDE/actions/ide';
 import { setLanguage } from '../IDE/actions/preferences';
 import { CookieConsent } from '../User/components/CookieConsent';
@@ -52,6 +53,7 @@ export const App = ({ children }: { children?: React.ReactNode }) => {
       <CookieConsent hide={hide} />
       {showReduxDevTools() && <DevTools />}
       {children}
+      <AccountMigrationNotice />
     </div>
   );
 };
