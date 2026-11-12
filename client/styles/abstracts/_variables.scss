@@ -9,6 +9,8 @@ $black: #000;
 $yellow: #f5dc23;
 $dodgerblue: #1e90ff;
 $p5-contrast-pink: #ffa9d9;
+$p5-contrast-light-pink: #ffa9d9;
+$p5-contrast-dark-pink: #b20046;
 
 $outline-color: #0f9dd7;
 
@@ -77,7 +79,8 @@ $themes: (
     button-border-color: $middle-light,
     button-color: $black,
     button-hover-color: $lightest,
-    button-nav-inactive-color: $middle-gray,
+    button-nav-active-color: $darker,
+    button-nav-inactive-color: $middle-dark,
     button-secondary-background-color: $medium-light,
     codefold-icon-closed: url('../images/triangle-arrow-right.svg?byUrl'),
     codefold-icon-open: url('../images/triangle-arrow-down.svg?byUrl'),
@@ -110,7 +113,10 @@ $themes: (
     highlight-style-tag-color: $p5-light-pink,
     highlight-style-property-color: $p5-light-black,
     highlight-style-attribute-color: $p5-light-black,
-    highlight-style-matching-selection-background-color: $p5js-pink-opacity,
+    highlight-style-matching-selection-background-color:
+      rgba($p5-contrast-pink, 0.3),
+    highlight-style-matched-selection-background-color:
+      rgba($p5-contrast-pink, 0.6),
     hint-arrow-background-active-color: $p5js-active-pink,
     hint-arrow-background-color: #ed225ddd,
     hint-arrow-color: $lightest,
@@ -140,11 +146,13 @@ $themes: (
     inactive-text-color: $middle-dark,
     input-background-color: $lightest,
     input-border-color: $middle-dark,
+    input-placeholder-color: $middle-dark,
     input-secondary-background-color: $lightest,
     input-selection-background-color: $medium-light,
     input-selection-text-color: $dark,
     input-text-color: $dark,
     keyboard-shortcut-color: $middle-gray,
+    link-text-color: $p5-contrast-dark-pink,
     logo-background-color: $lightest,
     logo-color: $p5js-pink,
     modal-background-color: $light,
@@ -176,7 +184,13 @@ $themes: (
     toast-background-color: $medium-dark,
     toast-text-color: $lightest,
     toolbar-button-background-color: $medium-light,
-    toolbar-button-color: $dark
+    toolbar-button-color: $dark,
+    toolbar-start-stop-button-background-color: #dbdbdb,
+    toolbar-start-stop-button-hover-background-color: #ed225e,
+    toolbar-start-stop-button-hover-outline-color: $p5js-pink,
+    toolbar-start-stop-button-outline-color: #dbdbdb,
+    toolbar-start-stop-icon-color: $p5-light-black,
+    toolbar-start-stop-active-icon-color: #ffffff
   ),
   dark: (
     activeline-background-color: $p5-dark-activeline,
@@ -191,6 +205,7 @@ $themes: (
     button-border-color: $middle-dark,
     button-color: $light,
     button-hover-color: $lightest,
+    button-nav-active-color: $lightest,
     button-nav-inactive-color: $middle-light,
     button-secondary-background-color: $medium-dark,
     codefold-icon-closed: url('../images/triangle-arrow-right-white.svg?byUrl'),
@@ -203,7 +218,7 @@ $themes: (
     console-header-color: $lightest,
     console-input-background-color: $darker,
     editor-gutter-color: $darker,
-    error-color: $p5js-pink,
+    error-color: $p5-contrast-light-pink,
     file-hover-color: $dark,
     file-selected-color: $medium-dark,
     form-input-placeholder-text-color: $middle-gray,
@@ -223,7 +238,10 @@ $themes: (
     highlight-style-tag-color: $p5-dark-pink,
     highlight-style-property-color: $p5-dark-white,
     highlight-style-attribute-color: $p5-dark-lightblue,
-    highlight-style-matching-selection-background-color: $p5js-pink-opacity,
+    highlight-style-matching-selection-background-color:
+      rgba($p5-contrast-pink, 0.2),
+    highlight-style-matched-selection-background-color:
+      rgba($p5-contrast-pink, 0.35),
     hint-arrow-background-active-color: $p5js-active-pink,
     hint-arrow-background-color: #ed225ddd,
     hint-arrow-color: $lightest,
@@ -253,11 +271,13 @@ $themes: (
     inactive-text-color: $middle-light,
     input-background-color: $dark,
     input-border-color: $light,
+    input-placeholder-color: $middle-light,
     input-secondary-background-color: $medium-dark,
     input-selection-background-color: $lightest,
     input-selection-text-color: $darkest,
     input-text-color: $lightest,
     keyboard-shortcut-color: $middle-light,
+    link-text-color: $p5-contrast-light-pink,
     logo-background-color: $lightest,
     logo-color: $p5js-pink,
     modal-background-color: $dark,
@@ -289,7 +309,13 @@ $themes: (
     toast-background-color: $medium-light,
     toast-text-color: $dark,
     toolbar-button-background-color: $medium-dark,
-    toolbar-button-color: $lightest
+    toolbar-button-color: $lightest,
+    toolbar-start-stop-button-background-color: #dedede,
+    toolbar-start-stop-button-hover-background-color: #ed225e,
+    toolbar-start-stop-button-hover-outline-color: $p5js-pink,
+    toolbar-start-stop-button-outline-color: #dedede,
+    toolbar-start-stop-icon-color: $p5-light-black,
+    toolbar-start-stop-active-icon-color: #ffffff
   ),
   contrast: (
     activeline-background-color: $p5-contrast-activeline,
@@ -304,7 +330,8 @@ $themes: (
     button-border-color: $middle-dark,
     button-color: $light,
     button-hover-color: $dark,
-    button-nav-inactive-color: $light,
+    button-nav-active-color: $lightest,
+    button-nav-inactive-color: $middle-light,
     button-secondary-background-color: $medium-dark,
     codefold-icon-closed: url('../images/triangle-arrow-right-white.svg?byUrl'),
     codefold-icon-open: url('../images/triangle-arrow-down-white.svg?byUrl'),
@@ -316,7 +343,7 @@ $themes: (
     console-header-color: $lightest,
     console-input-background-color: $darker,
     editor-gutter-color: $darker,
-    error-color: $p5-contrast-pink,
+    error-color: $p5-contrast-light-pink,
     file-hover-color: $dark,
     file-selected-color: $medium-dark,
     form-navigation-options-color: $middle-light,
@@ -336,6 +363,7 @@ $themes: (
     highlight-style-property-color: $p5-contrast-white,
     highlight-style-attribute-color: $p5-contrast-white,
     highlight-style-matching-selection-background-color: $medium-dark,
+    highlight-style-matched-selection-background-color: $medium-dark,
     hint-arrow-background-active-color: #f5dc23,
     hint-arrow-background-color: #f5dc23dd,
     hint-arrow-color: $darker,
@@ -364,12 +392,14 @@ $themes: (
     ide-border-color: $middle-dark,
     inactive-text-color: $light,
     input-background-color: $dark,
-    input-border-color: $middle-dark,
+    input-border-color: $light,
+    input-placeholder-color: $light,
     input-secondary-background-color: $medium-dark,
     input-selection-background-color: $lightest,
     input-selection-text-color: $darkest,
     input-text-color: $lightest,
     keyboard-shortcut-color: $middle-light,
+    link-text-color: $p5-contrast-light-pink,
     logo-background-color: $darker,
     logo-color: $yellow,
     modal-background-color: $dark,
@@ -401,6 +431,12 @@ $themes: (
     toast-background-color: $medium-light,
     toast-text-color: $darker,
     toolbar-button-background-color: $medium-light,
-    toolbar-button-color: $dark
+    toolbar-button-color: $dark,
+    toolbar-start-stop-button-background-color: $darker,
+    toolbar-start-stop-button-hover-background-color: $p5-contrast-yellow,
+    toolbar-start-stop-button-hover-outline-color: $yellow,
+    toolbar-start-stop-button-outline-color: #ffffff,
+    toolbar-start-stop-icon-color: #ffffff,
+    toolbar-start-stop-active-icon-color: #000000
   )
 );

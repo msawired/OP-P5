@@ -2,7 +2,6 @@ import { useRef, useEffect } from 'react';
 import { EditorView, lineNumbers as lineNumbersExt } from '@codemirror/view';
 import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
 import { debounce } from 'lodash';
-import { openSearchPanel } from '@codemirror/search';
 import { saveLocalBackup } from '../../utils/localBackup';
 import { p5JavaScript } from './utils/p5JavaScript';
 
@@ -39,7 +38,8 @@ export default function useCodeMirror({
   fontSize,
   onUpdateLinting,
   referenceBaseUrl,
-  p5Version
+  p5Version,
+  showSearch
 }) {
   // The codemirror instance.
   const cmView = useRef();
@@ -167,10 +167,15 @@ export default function useCodeMirror({
     });
   }, [autocompleteHinter, referenceBaseUrl]);
   useEffect(() => {
-    const reconfigureEffect = (fileState) =>
-      fileState.languageCpt.reconfigure(
-        autocompleteHinter ? p5JavaScript(p5Version) : []
-      );
+    const reconfigureEffect = (fileState) => {
+      const fileMode = getFileMode(fileState.filename);
+
+      if (fileMode !== 'javascript') {
+        return [];
+      }
+
+      return fileState.languageCpt.reconfigure(p5JavaScript(p5Version));
+    };
 
     updateFileStates({
       fileStates: fileStates.current,
@@ -203,7 +208,8 @@ export default function useCodeMirror({
             onViewUpdate,
             referenceBaseUrl,
             fontSize,
-            p5Version
+            p5Version,
+            searchPanelCallback: showSearch
           }
         );
       }
@@ -236,10 +242,6 @@ export default function useCodeMirror({
     return updatedFile;
   };
 
-  const showSearch = () => {
-    openSearchPanel(cmView.current);
-  };
-
   const tidyCode = () => {
     const fileMode = getFileMode(file.name);
     tidyCodeWithPrettier(cmView.current, fileMode);
@@ -268,7 +270,6 @@ export default function useCodeMirror({
     teardownCodeMirror,
     getContent,
     tidyCode,
-    showSearch,
     updateEditorFileContent,
     codemirrorView: cmView
   };
