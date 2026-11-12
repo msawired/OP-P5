@@ -2,6 +2,7 @@
 .env
 .env.production
 .env.staging
+.env.OP
 .vscode/
 node_modules/
 minio/
